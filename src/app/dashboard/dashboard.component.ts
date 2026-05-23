@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
@@ -8,7 +8,11 @@ import { CardComponent } from '@shared/components/card/card.component';
 import { friendlyDate } from '@shared/utils/date.util';
 
 import { DietTargetsService } from '@diet/services/diet-targets.service';
+import { MealLogService } from '@diet/services/meal-log.service';
+import { MealPlanService } from '@diet/services/meal-plan.service';
 import { ProfileService } from '@diet/services/profile.service';
+
+import { HydrationService } from '@hydration/services/hydration.service';
 
 import { RoutineScheduleService } from '@workout/services/routine-schedule.service';
 import {
@@ -21,13 +25,14 @@ import {
 /**
  * Dashboard / Home.
  *
- * Module 4: the dashboard now reads REAL diet targets from DietTargetsService
- * (which derives them from the user's profile via DietCalculatorService).
+ * Module 7 — every number on this screen is now real:
+ *   - Workout hero: RoutineScheduleService
+ *   - Water card: HydrationService
+ *   - Calories + Macros: MealLogService aggregating consumed meals from
+ *     the active MealPlanService plan
  *
- * Consumed-today metrics (calories logged, water drunk, macros eaten) are
- * still mock values — those come from Modules 5/6 (meal logs + hydration).
- * We surface them as zero-progress bars so the UI is structurally complete
- * and ready to wire up.
+ * No mock values. The dashboard is a pure reactive read; user actions
+ * happen on the feature pages and changes flow back through signals.
  */
 @Component({
   selector: 'app-dashboard',
@@ -128,53 +133,59 @@ import {
 
       <!-- Stats row — water + calories. Now reading real targets. -->
       <div class="grid grid-cols-2 gap-3 mb-3">
-        <app-card>
-          <div class="flex items-center gap-2 mb-3">
-            <div
-              class="w-7 h-7 rounded-lg grid place-items-center"
-              style="background: rgb(var(--electric) / 0.15); color: rgb(var(--electric));"
-            >
-              <app-icon name="droplet" [size]="14" />
+        <a [routerLink]="['/hydration']" class="block">
+          <app-card>
+            <div class="flex items-center gap-2 mb-3">
+              <div
+                class="w-7 h-7 rounded-lg grid place-items-center"
+                style="background: rgb(var(--electric) / 0.15); color: rgb(var(--electric));"
+              >
+                <app-icon name="droplet" [size]="14" />
+              </div>
+              <span class="text-xs text-muted font-semibold">Water</span>
             </div>
-            <span class="text-xs text-muted font-semibold">Water</span>
-          </div>
-          <p class="text-xl font-bold num">
-            0<span class="text-sm text-muted font-medium">
-              / {{ (waterGoalMl() / 1000).toFixed(1) }}L
-            </span>
-          </p>
-          <div class="mt-2.5 h-1.5 bg-border rounded-full overflow-hidden">
-            <div
-              class="h-full rounded-full transition-all duration-500"
-              [style.width.%]="0"
-              style="background: rgb(var(--electric));"
-            ></div>
-          </div>
-        </app-card>
+            <p class="text-xl font-bold num">
+              {{ waterTotalLiters() | number: '1.1-1' }}<span class="text-sm text-muted font-medium">
+                / {{ waterGoalLiters() | number: '1.1-1' }}L
+              </span>
+            </p>
+            <div class="mt-2.5 h-1.5 bg-border rounded-full overflow-hidden">
+              <div
+                class="h-full rounded-full transition-all duration-500"
+                [style.width.%]="waterProgressPct()"
+                style="background: rgb(var(--electric));"
+              ></div>
+            </div>
+          </app-card>
+        </a>
 
-        <app-card>
-          <div class="flex items-center gap-2 mb-3">
-            <div
-              class="w-7 h-7 rounded-lg grid place-items-center"
-              style="background: rgb(var(--accent) / 0.15); color: rgb(var(--accent));"
-            >
-              <app-icon name="flame" [size]="14" />
+        <a [routerLink]="['/diet']" class="block">
+          <app-card>
+            <div class="flex items-center gap-2 mb-3">
+              <div
+                class="w-7 h-7 rounded-lg grid place-items-center"
+                style="background: rgb(var(--accent) / 0.15); color: rgb(var(--accent));"
+              >
+                <app-icon name="flame" [size]="14" />
+              </div>
+              <span class="text-xs text-muted font-semibold">Calories</span>
             </div>
-            <span class="text-xs text-muted font-semibold">Calories</span>
-          </div>
-          <p class="text-xl font-bold num">
-            0<span class="text-sm text-muted font-medium">
-              / {{ targetKcal() | number }}
-            </span>
-          </p>
-          <div class="mt-2.5 h-1.5 bg-border rounded-full overflow-hidden">
-            <div
-              class="h-full rounded-full transition-all duration-500"
-              [style.width.%]="0"
-              style="background: rgb(var(--accent));"
-            ></div>
-          </div>
-        </app-card>
+            <p class="text-xl font-bold num">
+              {{ consumedKcal() | number }}<span class="text-sm text-muted font-medium">
+                / {{ targetKcal() | number }}
+              </span>
+            </p>
+            <div class="mt-2.5 h-1.5 bg-border rounded-full overflow-hidden">
+              <div
+                class="h-full rounded-full transition-all duration-500"
+                [style.width.%]="kcalProgressPct()"
+                [style.background]="overTarget()
+                  ? 'rgb(var(--warning))'
+                  : 'rgb(var(--accent))'"
+              ></div>
+            </div>
+          </app-card>
+        </a>
       </div>
 
       <!-- Macros card -->
@@ -194,12 +205,12 @@ import {
             <div class="flex justify-between text-sm mb-1.5">
               <span class="font-semibold">Protein</span>
               <span class="text-muted num">
-                <span class="text-text font-semibold">0</span> / {{ proteinG() }} g
+                <span class="text-text font-semibold">{{ consumedProteinG() }}</span> / {{ proteinG() }} g
               </span>
             </div>
             <div class="h-1.5 bg-border rounded-full overflow-hidden">
               <div class="h-full rounded-full transition-all duration-500"
-                   [style.width.%]="0"
+                   [style.width.%]="proteinConsumedPct()"
                    style="background: rgb(var(--primary));"></div>
             </div>
           </div>
@@ -207,12 +218,12 @@ import {
             <div class="flex justify-between text-sm mb-1.5">
               <span class="font-semibold">Carbs</span>
               <span class="text-muted num">
-                <span class="text-text font-semibold">0</span> / {{ carbsG() }} g
+                <span class="text-text font-semibold">{{ consumedCarbsG() }}</span> / {{ carbsG() }} g
               </span>
             </div>
             <div class="h-1.5 bg-border rounded-full overflow-hidden">
               <div class="h-full rounded-full transition-all duration-500"
-                   [style.width.%]="0"
+                   [style.width.%]="carbsConsumedPct()"
                    style="background: rgb(var(--accent));"></div>
             </div>
           </div>
@@ -220,12 +231,12 @@ import {
             <div class="flex justify-between text-sm mb-1.5">
               <span class="font-semibold">Fats</span>
               <span class="text-muted num">
-                <span class="text-text font-semibold">0</span> / {{ fatsG() }} g
+                <span class="text-text font-semibold">{{ consumedFatsG() }}</span> / {{ fatsG() }} g
               </span>
             </div>
             <div class="h-1.5 bg-border rounded-full overflow-hidden">
               <div class="h-full rounded-full transition-all duration-500"
-                   [style.width.%]="0"
+                   [style.width.%]="fatsConsumedPct()"
                    style="background: rgb(var(--warning));"></div>
             </div>
           </div>
@@ -244,6 +255,9 @@ export default class DashboardComponent {
   private readonly auth = inject(AuthService);
   private readonly profileService = inject(ProfileService);
   private readonly targetsService = inject(DietTargetsService);
+  private readonly hydration = inject(HydrationService);
+  private readonly mealPlanService = inject(MealPlanService);
+  private readonly mealLogService = inject(MealLogService);
   private readonly schedule = inject(RoutineScheduleService);
 
   protected readonly today = friendlyDate();
@@ -252,6 +266,18 @@ export default class DashboardComponent {
   // -------- Workout signals (Module 5) --------
   protected readonly suggestedToday = this.schedule.suggestedToday;
   protected readonly todayLog = this.schedule.todayLog;
+
+  constructor() {
+    // Wire today's routine into MealPlanService so it can pick the right
+    // plan for routine-keyed custom plans (future). The dashboard is the
+    // most common entry-point so doing it here means the diet page also
+    // sees a primed value when navigated to.
+    effect(() => {
+      const log = this.todayLog();
+      const suggested = this.suggestedToday();
+      this.mealPlanService.setCurrentRoutine(log?.routineKey ?? suggested);
+    });
+  }
 
   protected workoutLabel(k: DayChoice): string { return ROUTINE_LABELS[k]; }
   protected workoutFocus(k: DayChoice): string { return ROUTINE_FOCUS[k]; }
@@ -279,7 +305,47 @@ export default class DashboardComponent {
   protected readonly proteinG   = computed(() => this.targetsService.targets()?.proteinG   ?? 140);
   protected readonly carbsG     = computed(() => this.targetsService.targets()?.carbsG     ?? 220);
   protected readonly fatsG      = computed(() => this.targetsService.targets()?.fatsG      ?? 60);
-  protected readonly waterGoalMl = computed(() => this.targetsService.targets()?.waterMl   ?? 2500);
+
+  // -------- Consumed today (Module 7) --------
+  // Aggregate is a function on MealLogService taking the active plan as
+  // input. Wrapping the call in a computed registers both the plan signal
+  // (via mealPlanService.todayPlan()) AND the consumedIds signal (via
+  // mealLogService.aggregate's internal read) as deps, so the bars update
+  // both when the user taps a meal AND when the day's plan changes at
+  // midnight.
+  private readonly consumed = computed(() =>
+    this.mealLogService.aggregate(this.mealPlanService.todayPlan()),
+  );
+
+  protected readonly consumedKcal     = computed(() => this.consumed().kcal);
+  protected readonly consumedProteinG = computed(() => this.consumed().proteinG);
+  protected readonly consumedCarbsG   = computed(() => this.consumed().carbsG);
+  protected readonly consumedFatsG    = computed(() => this.consumed().fatsG);
+
+  protected readonly overTarget = computed(() => this.consumedKcal() > this.targetKcal());
+
+  protected readonly kcalProgressPct = computed(() =>
+    Math.min(100, (this.consumedKcal() / Math.max(1, this.targetKcal())) * 100),
+  );
+
+  protected readonly proteinConsumedPct = computed(() =>
+    Math.min(100, (this.consumedProteinG() / Math.max(1, this.proteinG())) * 100),
+  );
+  protected readonly carbsConsumedPct = computed(() =>
+    Math.min(100, (this.consumedCarbsG() / Math.max(1, this.carbsG())) * 100),
+  );
+  protected readonly fatsConsumedPct = computed(() =>
+    Math.min(100, (this.consumedFatsG() / Math.max(1, this.fatsG())) * 100),
+  );
+
+  // -------- Hydration readouts (Module 6) --------
+  // Read from HydrationService. The goal already accounts for the
+  // workout-day bonus when applicable — no need to recombine here.
+  protected readonly waterTotalLiters = computed(() => this.hydration.totalMl() / 1000);
+  protected readonly waterGoalLiters  = computed(() => this.hydration.goalMl() / 1000);
+  protected readonly waterProgressPct = computed(() =>
+    Math.min(100, this.hydration.progressPct() * 100),
+  );
 
   protected async signOut(): Promise<void> {
     await this.auth.signOut();

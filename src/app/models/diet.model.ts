@@ -77,7 +77,20 @@ export interface MealPlan {
 
 /**
  * One meal-log entry per (user, date, mealId).
- * `consumed` flips when user taps "Mark Consumed".
+ *
+ * State machine (no row = "not decided yet"):
+ *   - consumed=true, skipped=false  → user marked it eaten
+ *   - consumed=false, skipped=true  → user explicitly skipped (off-day, didn't eat)
+ *   - consumed=false, skipped=false → row was un-toggled back to neutral
+ *
+ * Quick-add logs (off-plan items) live here too:
+ *   - mealId: `quick_<uuid>` (synthetic, doesn't match any template meal)
+ *   - mealPlanId: same as today's active plan, for analytics convenience
+ *   - customAdditions[]: the actual items + macros for the quick-add
+ *
+ * The aggregator handles both:
+ *   - Template meals: sums totals from `plan.meals.find(m.id === log.mealId)`
+ *   - Quick-adds: sums totals from `log.customAdditions`
  */
 export interface MealLog {
   id: string;                // `${userId}_${date}_${mealId}`
@@ -88,6 +101,8 @@ export interface MealLog {
   mealSlot: MealSlot;
   consumed: boolean;
   consumedAt?: string;
-  customAdditions?: MealItem[];  // future quick-add support
+  /** True if the user explicitly skipped this meal (vs just hasn't logged it). */
+  skipped?: boolean;
+  customAdditions?: MealItem[];
   syncedAt?: string;
 }

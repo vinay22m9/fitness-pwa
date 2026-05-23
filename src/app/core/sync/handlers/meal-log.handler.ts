@@ -89,6 +89,7 @@ function toRow(m: MealLog): Record<string, unknown> {
     meal_slot: m.mealSlot,
     consumed: m.consumed,
     consumed_at: m.consumedAt ?? null,
+    skipped: m.skipped ?? false,
     custom_additions: m.customAdditions ?? null,
   };
 }
@@ -106,6 +107,7 @@ function fromRow(r: Record<string, unknown>): MealLog {
     mealSlot: r['meal_slot'] as MealSlot,
     consumed: (r['consumed'] as boolean) ?? true,
     consumedAt: (r['consumed_at'] as string) ?? undefined,
+    skipped: (r['skipped'] as boolean) ?? false,
     customAdditions: (r['custom_additions'] as MealItem[]) ?? undefined,
     syncedAt: r['created_at'] as string,
   };

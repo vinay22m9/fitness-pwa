@@ -42,6 +42,11 @@ const ICONS: Record<string, IconPath> = {
   bed:       { paths: ['M2 4v16', 'M22 4v16', 'M2 8h20', 'M2 12h20', 'M6 8v4'] },
   bell:      { paths: ['M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9', 'M10.3 21a1.94 1.94 0 0 0 3.4 0'] },
   trending_up: { paths: ['M22 7l-8.5 8.5-5-5L2 17', 'M16 7h6v6'] },
+  trash:     { paths: ['M3 6h18', 'M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6', 'M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2', 'M10 11v6', 'M14 11v6'] },
+  minus:     { d: 'M5 12h14' },
+  undo:      { paths: ['M3 7v6h6', 'M21 17a9 9 0 0 0-15-6.7L3 13'] },
+  more_horizontal: { paths: ['M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2z', 'M19 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2z', 'M5 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2z'] },
+  skip:      { paths: ['M5 4l10 8-10 8V4z', 'M19 5v14'] },
 };
 
 @Component({
