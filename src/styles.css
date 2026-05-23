@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   THEME TOKENS — Dark only (premium fitness aesthetic)
+   RGB triplets (no commas) so Tailwind's <alpha-value> works.
+   ============================================================ */
+:root {
+  --bg:        11 15 20;       /* #0B0F14  page background */
+  --surface:   17 24 39;       /* #111827  card */
+  --elevated:  26 35 50;       /* #1A2332  raised / nav */
+  --border:    31 41 55;       /* #1F2937  hairline */
+
+  --primary:   163 230 53;     /* #A3E635  lime — workout, protein, primary CTA */
+  --accent:    34 211 238;     /* #22D3EE  cyan — diet, carbs */
+  --electric:  59 130 246;     /* #3B82F6  electric blue — water */
+  --warning:   251 191 36;     /* #FBBF24  amber — fats */
+  --danger:    248 113 113;    /* #F87171  red — errors only */
+  --success:   163 230 53;     /* same as primary */
+
+  --text:      243 244 246;    /* #F3F4F6  off-white */
+  --muted:     156 163 175;    /* #9CA3AF  secondary text */
+  --subtle:    75 85 99;       /* #4B5563  tertiary / inactive icons */
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+html, body { height: 100%; margin: 0; }
+
+body {
+  @apply bg-bg text-text font-sans antialiased;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
+  font-feature-settings: 'cv11', 'ss01';
+  /* respect notch + home indicator */
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Reset native button look */
+button { background: none; border: none; padding: 0; color: inherit; font: inherit; cursor: pointer; }
+
+/* Mobile-friendly tap behavior */
+button, nav, [role="button"] { user-select: none; }
+button:active, [role="button"]:active { transform: scale(0.97); }
+button, [role="button"] { transition: transform 0.12s ease, background-color 0.15s ease, box-shadow 0.2s ease; }
+
+/* Numbers always tabular so they don't shift while updating */
+.num { font-variant-numeric: tabular-nums; }
+
+/* ============================================================
+   COMPONENT UTILITIES
+   ============================================================ */
+.card {
+  @apply bg-surface rounded-2xl p-5;
+}
+
+.card-hero {
+  @apply bg-surface rounded-3xl p-5;
+}
+
+.btn-primary {
+  @apply bg-primary text-bg font-bold rounded-2xl px-5 py-3.5
+         disabled:opacity-40 disabled:pointer-events-none;
+  box-shadow: 0 0 24px rgb(var(--primary) / 0.25);
+}
+
+.btn-primary:active {
+  box-shadow: 0 0 12px rgb(var(--primary) / 0.4);
+}
+
+.btn-ghost {
+  @apply bg-elevated text-text font-medium rounded-2xl px-5 py-3.5;
+}
+
+.chip {
+  @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1
+         bg-elevated text-muted text-xs font-semibold;
+}
+
+.chip-primary {
+  @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1
+         text-xs font-bold uppercase tracking-wider;
+  background: rgb(var(--primary) / 0.12);
+  color: rgb(var(--primary));
+}
+
+/* Hairline divider */
+.divider { @apply border-t border-border/60; }
+
+/* Hide scrollbar */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+
+/* Page transition */
+.page-enter { animation: pageIn 0.28s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Neon-glow ring used on hero CTAs */
+.glow-primary { box-shadow: 0 0 24px rgb(var(--primary) / 0.25); }
+.glow-electric { box-shadow: 0 0 24px rgb(var(--electric) / 0.30); }
+.glow-accent { box-shadow: 0 0 24px rgb(var(--accent) / 0.25); }
