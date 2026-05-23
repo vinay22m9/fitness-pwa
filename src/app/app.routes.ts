@@ -1,14 +1,22 @@
 import { Routes } from '@angular/router';
+import { authGuard } from '@core/guards/auth.guard';
+import { onboardingGuard, completedOnboardingGuard } from '@core/guards/onboarding.guard';
 
 /**
  * App-level routes.
  *
- * Auth shell is mounted at /auth, main shell at root.
- * Every feature is lazy-loaded — initial bundle stays lean.
+ * Three top-level shells:
+ *   /auth/*       → AuthShellComponent      (no bottom nav, guest-only)
+ *   /onboarding   → AuthShellComponent      (no bottom nav, requires auth +
+ *                                            incomplete profile)
+ *   /            → MainShellComponent       (bottom nav, requires auth +
+ *                                            completed onboarding)
  *
- * The auth guard is NOT applied yet — it arrives with the Auth module.
- * Right now all routes are publicly reachable so we can navigate the
- * shell without sign-in.
+ * Guard chain on /home/* etc:
+ *   authGuard         — must be signed in
+ *   onboardingGuard   — profile must be complete (else → /onboarding)
+ *
+ * All features are lazy-loaded for a lean initial bundle.
  */
 export const routes: Routes = [
   {
@@ -18,7 +26,23 @@ export const routes: Routes = [
     loadChildren: () => import('./auth/auth.routes').then((m) => m.AUTH_ROUTES),
   },
   {
+    // Onboarding shares the auth shell (no bottom nav) since the user hasn't
+    // really "entered" the app yet. Sits at the top level so the bottom nav
+    // doesn't render during setup.
+    path: 'onboarding',
+    canActivate: [authGuard, completedOnboardingGuard],
+    loadComponent: () =>
+      import('./layout/auth-shell/auth-shell.component').then((m) => m.AuthShellComponent),
+    children: [
+      {
+        path: '',
+        loadComponent: () => import('./diet/pages/onboarding/onboarding.component'),
+      },
+    ],
+  },
+  {
     path: '',
+    canActivate: [authGuard, onboardingGuard],
     loadComponent: () =>
       import('./layout/main-shell/main-shell.component').then((m) => m.MainShellComponent),
     children: [
