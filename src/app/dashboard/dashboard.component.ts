@@ -14,6 +14,8 @@ import { ProfileService } from '@diet/services/profile.service';
 
 import { HydrationService } from '@hydration/services/hydration.service';
 
+import { ProgressStatsService } from '@progress/services/progress-stats.service';
+
 import { RoutineScheduleService } from '@workout/services/routine-schedule.service';
 import {
   ROUTINE_EMOJI,
@@ -50,13 +52,26 @@ import {
             {{ greeting() }}
           </h1>
         </div>
-        <button
-          class="w-10 h-10 rounded-2xl bg-elevated grid place-items-center text-muted hover:text-text transition-colors"
-          (click)="signOut()"
-          aria-label="Sign out"
-        >
-          <app-icon name="user" [size]="20" />
-        </button>
+        <div class="flex items-center gap-2">
+          @if (streak() > 0) {
+            <a
+              routerLink="/progress"
+              class="inline-flex items-center gap-1 rounded-full px-2.5 h-10 text-xs font-extrabold num"
+              style="background: rgb(var(--primary) / 0.15); color: rgb(var(--primary));"
+              [attr.aria-label]="'Workout streak: ' + streak() + ' days'"
+            >
+              <span>🔥</span>
+              <span>{{ streak() }}</span>
+            </a>
+          }
+          <button
+            class="w-10 h-10 rounded-2xl bg-elevated grid place-items-center text-muted hover:text-text transition-colors"
+            (click)="signOut()"
+            aria-label="Sign out"
+          >
+            <app-icon name="user" [size]="20" />
+          </button>
+        </div>
       </header>
 
       <!-- Hero workout card — wired to RoutineScheduleService -->
@@ -259,6 +274,7 @@ export default class DashboardComponent {
   private readonly mealPlanService = inject(MealPlanService);
   private readonly mealLogService = inject(MealLogService);
   private readonly schedule = inject(RoutineScheduleService);
+  private readonly stats = inject(ProgressStatsService);
 
   protected readonly today = friendlyDate();
   protected readonly email = this.auth.email;
@@ -266,6 +282,9 @@ export default class DashboardComponent {
   // -------- Workout signals (Module 5) --------
   protected readonly suggestedToday = this.schedule.suggestedToday;
   protected readonly todayLog = this.schedule.todayLog;
+
+  // -------- Streak chip (Module 8) --------
+  protected readonly streak = this.stats.currentStreak;
 
   constructor() {
     // Wire today's routine into MealPlanService so it can pick the right

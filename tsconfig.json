@@ -26,6 +26,7 @@
       "@diet/*": ["src/app/diet/*"],
       "@workout/*": ["src/app/workout/*"],
       "@hydration/*": ["src/app/hydration/*"],
+      "@progress/*": ["src/app/progress/*"],
       "@env/*": ["src/environments/*"]
     }
   },

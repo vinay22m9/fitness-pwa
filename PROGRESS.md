@@ -74,14 +74,20 @@ infrastructure rather than dashboard polish.
 - **Dashboard wired** — calorie card and macro bars read `consumedKcal / consumedProteinG / ...` from `MealLogService.aggregate(MealPlanService.todayPlan())`. Calorie bar flips to amber when over target. Cards link to `/diet`.
 - **Architecture** — extensible for AI / custom plans / grocery / analytics: `MealPlanService.todayPlan` is a signal already considering user-owned plans first; `aggregate()` takes any plan, not a hardcoded one; quick-add slot is preserved on `MealLog.mealSlot` for future grouping by time of day. MVP path stays lightweight: template-driven, no food DB, no manual macro entry, presets only.
 
+### Module 8 — Progress (Weight + Trends + Streaks)
+
+- **`WeightLogService`** — facade over weight history. Signals: `logs`, `latestKg`, `latestDate`, `daysSinceLatest`, `todayLog`. Method: `log({ weightKg, date?, note? })` returns `{ weightChanged, targetsWillRecompute, becomesLatest }` so the UI can fire the right toast accurately. Calls `profileService.updateWeight()` when the new entry becomes the latest, which cascades into `DietTargetsService`'s auto-mode recompute. **MVP storage decision (locked):** one entry per (user, date) — same-day re-log overwrites. Honours the existing server `unique (user_id, date)` constraint. Multi-per-day deferred until users actually need it; `note` field handles "morning"/"post-workout" hints.
+- **`ProgressStatsService`** — derives streaks + cadence + per-session volume from a 90-day window of workout logs (RoutineScheduleService only loads 14 days, so this needs its own liveQuery). Signals: `currentStreak`, `sessionsByWeek` (8 weeks), `sessionVolumes` (last 30), `totalWorkouts`, `totalMinutes`, `thisWeekCount`, `preferredVolumeMetric`. **Streak definition (locked):** any logged workout day counts, INCLUDING rest days; abandoned sessions don't; today-with-no-log-yet doesn't break the streak.
+- **Hybrid volume math** — every session log carries BOTH `weightedVolumeKg` (sets×reps×weight for weighted exercises) AND `bodyweightScore` (intensity-weighted sets×reps for bodyweight). Intensity multipliers: ≤7 reps → 1.5×, 8–14 → 1.2×, ≥15 → 1.0× (rough strength/hypertrophy/endurance proxy). Per-session also exposes `completedSets`, `totalReps`, `durationMin`. The chart picks which metric to display via `preferredVolumeMetric` based on what's dominant in the user's recent 10 sessions — no fake "gym bro" numbers for bodyweight users.
+- **Shared chart components** — `LineChartComponent` and `BarChartComponent` in `@shared/components/charts/`. Both are pure SVG, minimal: no gridlines, no axes, just the line/bars + optional endpoint labels. Single faint area-fill below the line. Most-recent point highlighted. Each ~120 lines. Reusable for any future trend chart.
+- **`ToastService` + `ToastComponent`** — global, single-active-toast, auto-dismisses after 3.5s. Tones: success / info / warning. Mounted once in `MainShellComponent`. Used by the weight-save flow to surface "Targets updated based on latest weight" only when auto-mode targets actually recomputed.
+- **Progress page** — replaces the placeholder at `/progress`. Sections: streak chip, weight card (latest + chart + inline log form), sessions-per-week bar chart, volume trend line chart, lifetime stats grid. The weight form pre-fills with the current latest weight, uses `inputmode="decimal"` for the mobile number keyboard, validates 20–400 kg range.
+- **Dashboard streak chip** — small lime `🔥 N` chip in the header next to the avatar, only when `streak > 0`. Tappable; links to `/progress`. Sized as a 40-px pill matching the avatar so the header stays balanced.
+- **`@progress/*` path alias** added to `tsconfig.json` to match the established feature-folder pattern.
+
 ---
 
 ## 🔜 Next Up
-
-### Module 8 — Progress
-- Weight log + chart
-- Workout volume trends
-- Streaks
 
 ### Module 9 — AI Coach
 - Move Gemini key to Supabase Edge Function
@@ -155,10 +161,10 @@ src/app/
 ├── diet/             profile + targets + meal plans + meal logs (Modules 4, 7)
 ├── workout/          routines + sessions + history (Module 5)
 ├── hydration/        water tracker (Module 6)
-├── progress/         Module 8 — placeholder
+├── progress/         weight log + streak + trends (Module 8)
 └── settings/         Module 10 — placeholder
 ```
 
 ---
 
-*Last updated: end of Module 7 (incl. UX refinement pass)*
+*Last updated: end of Module 8*
