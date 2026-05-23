@@ -71,6 +71,7 @@ function toRow(w: WorkoutLog): Record<string, unknown> {
     duration_min: w.durationMin ?? null,
     exercises: w.exercises,
     notes: w.notes ?? null,
+    status: w.status ?? 'completed',
     updated_at: isoNow(),
   };
 }
@@ -86,6 +87,7 @@ function fromRow(r: Record<string, unknown>): WorkoutLog {
     durationMin: (r['duration_min'] as number) ?? undefined,
     exercises: (r['exercises'] as ExerciseLog[]) ?? [],
     notes: (r['notes'] as string) ?? undefined,
+    status: (r['status'] as WorkoutLog['status']) ?? 'completed',
     syncedAt: r['updated_at'] as string,
   };
 }

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DecimalPipe } from '@angular/common';
@@ -453,8 +453,16 @@ export default class OnboardingComponent {
     { value: 'maintenance', label: 'Maintain',     hint: 'Stay where you are, feel better',     emoji: '⚖️' },
   ];
 
-  /** Required fields for the current step. */
-  protected readonly canAdvance = computed(() => {
+  /**
+   * Required-fields gate for the Continue button.
+   *
+   * Plain method (not a `computed`) on purpose: `draft` is a mutable plain
+   * object that ngModel writes into directly. A `computed` here would have
+   * no signal dependency and cache its initial `false` forever. A method is
+   * re-evaluated on each change-detection pass (which Angular runs after
+   * every ngModel input event), so the button enables/disables correctly.
+   */
+  protected canAdvance(): boolean {
     switch (this.step()) {
       case 1: return this.draft.displayName.trim().length > 0;
       case 2: return this.draft.age >= 13 && this.draft.age <= 100 && !!this.draft.gender;
@@ -465,13 +473,16 @@ export default class OnboardingComponent {
       case 6: return true;
       default: return false;
     }
-  });
+  }
 
-  /** Live calculator preview shown on the review step. */
-  protected readonly preview = computed(() => {
-    // Build a synthetic Profile from the draft (without saving) so we can
-    // reuse the calculator's `fromProfile`. The id/timestamps don't matter
-    // for the math.
+  /**
+   * Live calculator preview shown on the review step.
+   *
+   * Method (not a `computed`) for the same reason as `canAdvance()` —
+   * depends on the plain `draft` object, so it must re-evaluate on every
+   * CD pass rather than caching off signal-only dependencies.
+   */
+  protected preview() {
     const synthetic: Profile = {
       id: this.auth.userId() ?? 'preview',
       displayName: this.draft.displayName,
@@ -489,18 +500,20 @@ export default class OnboardingComponent {
       ...t,
       bmiCategory: this.calculator.bmiCategory(t.bmi),
     };
-  });
+  }
 
   /** BMI ring fills against 40 as a sensible upper bound. */
-  protected readonly bmiRingValue = computed(() => Math.min(40, this.preview().bmi));
+  protected bmiRingValue(): number {
+    return Math.min(40, this.preview().bmi);
+  }
 
   /** Lime if normal, amber for over/under, red for obese. */
-  protected readonly bmiColorVar = computed(() => {
+  protected bmiColorVar(): string {
     const cat = this.preview().bmiCategory;
     if (cat === 'normal') return '--primary';
     if (cat === 'obese')  return '--danger';
     return '--warning';
-  });
+  }
 
   protected goalShortLabel(): string {
     return this.GOAL_OPTIONS.find((g) => g.value === this.draft.goal)?.label ?? '';

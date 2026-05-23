@@ -24,6 +24,7 @@
       "@models/*": ["src/app/models/*"],
       "@auth/*": ["src/app/auth/*"],
       "@diet/*": ["src/app/diet/*"],
+      "@workout/*": ["src/app/workout/*"],
       "@env/*": ["src/environments/*"]
     }
   },

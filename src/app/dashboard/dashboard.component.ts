@@ -10,6 +10,14 @@ import { friendlyDate } from '@shared/utils/date.util';
 import { DietTargetsService } from '@diet/services/diet-targets.service';
 import { ProfileService } from '@diet/services/profile.service';
 
+import { RoutineScheduleService } from '@workout/services/routine-schedule.service';
+import {
+  ROUTINE_EMOJI,
+  ROUTINE_FOCUS,
+  ROUTINE_LABELS,
+  type DayChoice,
+} from '@models/workout.model';
+
 /**
  * Dashboard / Home.
  *
@@ -46,25 +54,76 @@ import { ProfileService } from '@diet/services/profile.service';
         </button>
       </header>
 
-      <!-- Hero workout card (still mock — Module 6 wires this up to RotationState) -->
+      <!-- Hero workout card — wired to RoutineScheduleService -->
       <app-card variant="hero" class="block mb-3">
-        <div class="flex items-start justify-between mb-4">
-          <div>
-            <span class="chip-primary">Today · Pull &amp; Legs</span>
-            <h2 class="text-xl font-bold mt-2">5 exercises</h2>
-            <p class="text-sm text-muted mt-1">~45 min · Back, Biceps, Quads</p>
+        @if (todayLog(); as logged) {
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <span class="chip-primary">
+                <app-icon name="check" [size]="12" />
+                {{ logged.status === 'in_progress' ? 'In progress' : 'Logged today' }}
+              </span>
+              <h2 class="text-xl font-bold mt-2">{{ workoutLabel(logged.routineKey) }}</h2>
+              <p class="text-sm text-muted mt-1">
+                @if (logged.routineKey === 'rest') {
+                  Recovery day
+                } @else if (logged.status === 'in_progress') {
+                  Resume where you left off
+                } @else {
+                  Nice work
+                }
+              </p>
+            </div>
+            <div
+              class="w-14 h-14 rounded-2xl grid place-items-center text-2xl"
+              style="background: rgb(var(--primary) / 0.12);"
+            >
+              {{ workoutEmoji(logged.routineKey) }}
+            </div>
           </div>
-          <div
-            class="w-14 h-14 rounded-2xl grid place-items-center text-2xl"
-            style="background: rgb(var(--primary) / 0.12);"
+          @if (logged.status === 'in_progress') {
+            <a
+              [routerLink]="['/workout/active']"
+              class="btn-primary w-full flex items-center justify-center gap-2"
+            >
+              <app-icon name="zap" [size]="18" />
+              Resume Workout
+            </a>
+          } @else {
+            <a
+              [routerLink]="['/workout']"
+              class="btn-ghost w-full flex items-center justify-center gap-2"
+            >
+              View Workout
+              <app-icon name="chevron_right" [size]="16" />
+            </a>
+          }
+        } @else {
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <span class="chip-primary">Today · suggested</span>
+              <h2 class="text-xl font-bold mt-2">{{ workoutLabel(suggestedToday()) }}</h2>
+              <p class="text-sm text-muted mt-1">{{ workoutFocus(suggestedToday()) }}</p>
+            </div>
+            <div
+              class="w-14 h-14 rounded-2xl grid place-items-center text-2xl"
+              style="background: rgb(var(--primary) / 0.12);"
+            >
+              {{ workoutEmoji(suggestedToday()) }}
+            </div>
+          </div>
+          <a
+            [routerLink]="['/workout']"
+            class="btn-primary w-full flex items-center justify-center gap-2"
           >
-            💪
-          </div>
-        </div>
-        <button class="btn-primary w-full flex items-center justify-center gap-2">
-          <app-icon name="zap" [size]="18" />
-          Start Workout
-        </button>
+            <app-icon name="zap" [size]="18" />
+            @if (suggestedToday() === 'rest') {
+              Log Rest Day
+            } @else {
+              Start Workout
+            }
+          </a>
+        }
       </app-card>
 
       <!-- Stats row — water + calories. Now reading real targets. -->
@@ -185,9 +244,18 @@ export default class DashboardComponent {
   private readonly auth = inject(AuthService);
   private readonly profileService = inject(ProfileService);
   private readonly targetsService = inject(DietTargetsService);
+  private readonly schedule = inject(RoutineScheduleService);
 
   protected readonly today = friendlyDate();
   protected readonly email = this.auth.email;
+
+  // -------- Workout signals (Module 5) --------
+  protected readonly suggestedToday = this.schedule.suggestedToday;
+  protected readonly todayLog = this.schedule.todayLog;
+
+  protected workoutLabel(k: DayChoice): string { return ROUTINE_LABELS[k]; }
+  protected workoutFocus(k: DayChoice): string { return ROUTINE_FOCUS[k]; }
+  protected workoutEmoji(k: DayChoice): string { return ROUTINE_EMOJI[k]; }
 
   // -------- Greeting --------
   // Prefer profile.displayName (set during onboarding). Fall back to the
